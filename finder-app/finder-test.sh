@@ -51,6 +51,7 @@ fi
 #echo "Removing the old writer utility and compiling as a native application"
 make clean
 make
+file writer > ../assignments/assignment2/fileresult.txt
 
 for i in $( seq 1 $NUMFILES)
 do
