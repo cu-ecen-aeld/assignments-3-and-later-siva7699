@@ -1,4 +1,11 @@
 #include "systemcalls.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -15,7 +22,13 @@ bool do_system(const char *cmd)
  *  Call the system() function with the command set in the cmd
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
-*/
+*/ 
+    
+    int status = system(cmd);
+    if (status == -1) {
+        perror("system");
+        return false;
+    }
 
     return true;
 }
@@ -59,6 +72,30 @@ bool do_exec(int count, ...)
  *
 */
 
+    pid_t pid = fork();
+
+    if (pid == 0) {
+        // Child process
+        if(execv(command[0], command)){
+        // If execv() returns, there was an error
+        perror("execv");
+        exit(1);
+        }
+        
+    } else if (pid > 0) {
+        // Parent process
+        int status;
+        waitpid(pid, &status, 0); // Wait for the child process to finish
+        if(status !=0){
+        perror("Parent Process:");
+        return false;
+        }
+    } else {
+        // Fork failed
+        perror("fork");
+    }
+    
+
     va_end(args);
 
     return true;
@@ -91,7 +128,47 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   redirect standard out to a file specified by outputfile.
  *   The rest of the behaviour is same as do_exec()
  *
-*/
+
+    
+    pid_t pid;
+    int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+    if (fd < 0) { perror("open"); abort(); }
+    switch (pid = fork()) {
+      case -1: perror("fork"); abort();
+      case 0:
+        if (dup2(fd, 1) < 0) { perror("dup2"); abort(); }
+        close(fd);
+        execv(command[0], command);
+      default:
+        close(fd);
+    }*/
+    
+    int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+    if (fd < 0) { perror("open"); abort(); }
+    
+    pid_t pid = fork();
+
+    if (pid == 0) {
+        // Child process
+        if (dup2(fd, 1) < 0) { perror("dup2"); exit(1); }
+        if(execv(command[0], command)){
+        // If execv() returns, there was an error
+        perror("execv");
+        exit(1);
+        }
+        
+    } else if (pid > 0) {
+        // Parent process
+        int status;
+        waitpid(pid, &status, 0); // Wait for the child process to finish
+        if(status !=0){
+        perror("Parent Process:");
+        return false;
+        }
+    } else {
+        // Fork failed
+        perror("fork");
+    }
 
     va_end(args);
 
