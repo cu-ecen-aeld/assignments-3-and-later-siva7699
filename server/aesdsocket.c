@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,9 +20,15 @@ int client_fd = -1;
 FILE *data_fp = NULL;
 
 void cleanup() {
-    if (client_fd != -1) close(client_fd);
-    if (server_fd != -1) close(server_fd);
-    if (data_fp) fclose(data_fp);
+    if (client_fd != -1) {
+        close(client_fd);
+    }
+    if (server_fd != -1) {
+        close(server_fd);
+    }
+    if (data_fp) {
+        fclose(data_fp);
+    }
     closelog();
 }
 
@@ -40,8 +47,8 @@ int main(int argc, char *argv[]) {
     // Truncate the data file at startup
     int fd_trunc = open(DATA_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd_trunc != -1) close(fd_trunc);
+
     int daemon_mode = 0;
-    // Parse arguments for -d
     int opt;
     while ((opt = getopt(argc, argv, "d")) != -1) {
         switch (opt) {
@@ -53,19 +60,16 @@ int main(int argc, char *argv[]) {
                 exit(EXIT_FAILURE);
         }
     }
+
     struct sockaddr_in server_addr, client_addr;
     socklen_t client_len = sizeof(client_addr);
     char buffer[BUFFER_SIZE];
     char client_ip[INET_ADDRSTRLEN];
 
-
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
-
     openlog("aesdsocket", LOG_PID, LOG_USER);
-
-
 
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == -1) {
@@ -172,6 +176,7 @@ int main(int argc, char *argv[]) {
             packet_size += to_copy;
             packet[packet_size] = '\0';
         }
+
         if (packet && packet_size > 0) {
             fseek(data_fp, 0, SEEK_END);
             fwrite(packet, 1, packet_size, data_fp);
@@ -181,6 +186,7 @@ int main(int argc, char *argv[]) {
             packet_size = 0;
             packet_capacity = 0;
         }
+
         // Now send back the full file contents
         fseek(data_fp, 0, SEEK_SET);
         while (1) {
