@@ -19,7 +19,7 @@ exec > >(tee -i -a "$logfile") 2> >(tee -i -a "$logfile" >&2)
 echo "Running test with user $(whoami)"
 
 set +e
-
+cp script-helpers assignment-autotest/test/shared/
 ./unit-test.sh
 unit_test_rc=$?
 if [ $unit_test_rc -ne 0 ]; then
