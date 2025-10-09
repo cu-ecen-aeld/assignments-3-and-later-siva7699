@@ -22,17 +22,24 @@ void cleanup() {
     if (client_fd != -1) close(client_fd);
     if (server_fd != -1) close(server_fd);
     if (data_fp) fclose(data_fp);
-    remove(DATA_FILE);
     closelog();
+}
+
+void cleanup_and_remove_file() {
+    cleanup();
+    remove(DATA_FILE);
 }
 
 void signal_handler(int sig) {
     syslog(LOG_INFO, "Caught signal, exiting");
-    cleanup();
+    cleanup_and_remove_file();
     exit(0);
 }
 
 int main(int argc, char *argv[]) {
+    // Truncate the data file at startup
+    int fd_trunc = open(DATA_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd_trunc != -1) close(fd_trunc);
     int daemon_mode = 0;
     // Parse arguments for -d
     int opt;
