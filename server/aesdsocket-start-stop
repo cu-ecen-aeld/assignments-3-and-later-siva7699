@@ -1,0 +1,31 @@
+#!/bin/sh
+# Startup script for aesdsocket using start-stop-daemon
+
+DAEMON=/usr/bin/aesdsocket
+OPTS="-d"
+PIDFILE=/var/run/aesdsocket.pid
+
+case "$1" in
+  start)
+    echo "Starting $DAEMON..."
+    start-stop-daemon --start --quiet \
+      --pidfile $PIDFILE --make-pidfile \
+      --background --exec $DAEMON -- $OPTS
+    ;;
+  stop)
+    echo "Stopping $DAEMON..."
+    start-stop-daemon --stop --quiet --pidfile $PIDFILE
+    ;;
+  restart)
+    echo "Restarting $DAEMON..."
+    $0 stop
+    sleep 1
+    $0 start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+    ;;
+esac
+
+exit 0
