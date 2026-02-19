@@ -612,7 +612,10 @@ validate_assignment6_native() {
     if [ $rc -ne 0 ]; then
         add_validate_error "make returned $rc attempting to build native application"
     fi
-    ./aesdsocket -d
+    ./aesdsocket -d &
+	DAEMON_PID=$!
+	echo "Started aesdsocket as daemon with PID $DAEMON_PID"
+	sleep 2
     rc=$?
     if [ $rc -ne 0 ]; then
         add_validate_error "starting aesdocket failed with $rc"
@@ -623,12 +626,23 @@ validate_assignment6_native() {
     if [ $rc -ne 0 ]; then
         add_validate_error "sockettest.sh returned $rc attempting to run against native compiled aesdsocket instance"
     fi
-    PID=$(pgrep aesdsocket)
-    kill $PID
+	if ps -p $DAEMON_PID > /dev/null 2>&1; then
+    echo "Killing daemon PID $DAEMON_PID"
+    kill $DAEMON_PID
+    sleep 2
+	fi
     popd
     popd
 
+	pushd ${source_dir}
+	make clean && make
+    rc=$?
+    if [ $rc -ne 0 ]; then
+        add_validate_error "make returned $rc attempting to build native application"
+    fi
 	assignment6_assignment5_run_valgrind
+    echo "Waiting for aesdsocket application to start"
+    sleep 3
     while [ 1 ]; do
        # Write timestamp: while waiting for start since these get filtered out during the diff check
        echo "timestamp:wait-for-startup" | nc localhost 9000 -w 1 | grep "timestamp:wait-for-startup"
