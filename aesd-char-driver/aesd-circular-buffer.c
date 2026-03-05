@@ -29,9 +29,25 @@
 struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct aesd_circular_buffer *buffer,
             size_t char_offset, size_t *entry_offset_byte_rtn )
 {
-    /**
-    * TODO: implement per description
-    */
+    size_t total_off = 0;
+    uint8_t index = buffer->out_offs;
+
+    for(int i=0; i< AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; i++)
+    {
+        //Check if the buffer entry string is NULL and return (happens when buffer is not full)
+        if(buffer->entry[index].buffptr == NULL) return NULL;
+        //check if the off_set lies within the buffer entry size, if it does return offset with struct
+        if( char_offset < (buffer->entry[index].size + total_off))
+        {
+            *entry_offset_byte_rtn= ( char_offset - total_off);
+            return &buffer->entry[index];
+        }
+        
+        // if offset does not lies on the above statement move to next entry and accumulate the size of this current entry
+        total_off += buffer->entry[index].size;
+        index= (index+1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+    }
+    
     return NULL;
 }
 
@@ -43,10 +59,19 @@ struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct
 * Any memory referenced in @param add_entry must be allocated by and/or must have a lifetime managed by the caller.
 */
 void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const struct aesd_buffer_entry *add_entry)
-{
-    /**
-    * TODO: implement per description
-    */
+{   
+    //copy the const entry locally and copy to buffer entry (buffer entry is array not a pointer)
+    struct aesd_buffer_entry my_entry = *add_entry;
+    buffer->entry[buffer->in_offs] = my_entry;
+
+    // Check if buffer is full and move out_offs
+    if(buffer->full) buffer->out_offs = (buffer->out_offs +1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+    //Move the in_offs
+    buffer->in_offs = (buffer->in_offs +1)% AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+    //Set the flag full to true if in_offs and out_offs is equal
+    if(buffer->in_offs == buffer->out_offs) buffer->full=true;
+
+
 }
 
 /**
