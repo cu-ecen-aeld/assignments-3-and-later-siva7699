@@ -28,6 +28,9 @@ struct aesd_dev
     /**
      * TODO: Add structure(s) and locks needed to complete assignment requirements
      */
+    struct aesd_circular_buffer circular_buffer;
+    mutex_t lock;          /* Mutual exclusion mutex.     */
+    struct aesd_buffer_entry write_entry; /* Buffer entry to store the current write data until it is ready to be added to the circular buffer */
     struct cdev cdev;     /* Char device structure      */
 };
 
