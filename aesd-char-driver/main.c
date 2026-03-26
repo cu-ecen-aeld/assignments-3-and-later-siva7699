@@ -59,7 +59,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos)
 {
     struct aesd_dev *dev = (struct aesd_dev *)filp->private_data;
-    strcut aesd_buffer_entry *entry;
+    struct aesd_buffer_entry *entry;
     size_t entry_offset_byte;
     ssize_t retval = 0;
     PDEBUG("read %zu bytes with offset %lld",count,*f_pos);
@@ -67,7 +67,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
      * TODO: handle read
     */
 
-    if(mutex_lock_interruptible(&aesd_device.lock))
+    if(mutex_lock_interruptible(&dev->lock))
     {
         return -ERESTARTSYS;
     }
@@ -77,22 +77,22 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     if(entry == NULL)
     {
         retval = 0;
-        goto out;
-
+        mutex_unlock(&dev->lock);
+        return retval;
     }
 
     size_t bytes_to_read = min(count, entry->size - entry_offset_byte);
     if(copy_to_user(buf, entry->buffptr + entry_offset_byte, bytes_to_read))
     {
         retval = -EFAULT;
-        goto out;
+        mutex_unlock(&dev->lock);
+        return retval;
     }
     *f_pos += bytes_to_read;
     retval = bytes_to_read;
 
 
-    out:
-    mutex_unlock(&aesd_device.lock);
+    mutex_unlock(&dev->lock);
     return retval;
 }
 
@@ -105,21 +105,21 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
      * TODO: handle write
      */
 
-    struct aesd_dev *dev = (struct aesd_dev *)filp->private_data;
-    if(mutex_lock_interruptible(&aesd_device.lock))
-    {
-        return -ERESTARTSYS;
-    }
-    char *kbuf = krealloc(dev->write_entry, dev->write_entry_size + count, GFP_KERNEL);
-    if(kbuf == NULL)    {
-        retval = -ENOMEM;
-        goto out;
-    }
-    dev->write_entry = kbuf;
-    dev->write_entry_size += count;
+    // struct aesd_dev *dev = (struct aesd_dev *)filp->private_data;
+    // if(mutex_lock_interruptible(&aesd_device->lock))
+    // {
+    //     return -ERESTARTSYS;
+    // }
+    // char *kbuf = krealloc(dev->write_entry, dev->write_entry_size + count, GFP_KERNEL);
+    // if(kbuf == NULL)    {
+    //     retval = -ENOMEM;
+    //     goto out;
+    // }
+    // dev->write_entry = kbuf;
+    // dev->write_entry_size += count;
 
-    out:
-    mutex_unlock(&aesd_device.lock);
+    // out:
+    // mutex_unlock(&aesd_device->lock);
     return retval;
 }
 struct file_operations aesd_fops = {
@@ -163,7 +163,7 @@ int aesd_init_module(void)
      * TODO: initialize the AESD specific portion of the device
      */
     mutex_init(&aesd_device.lock);
-    aesd_circualr_buffer_init(&aesd_device.circular_buffer);
+    aesd_circular_buffer_init(&aesd_device.circular_buffer);
     //Completed
     result = aesd_setup_cdev(&aesd_device);
 
@@ -183,10 +183,11 @@ void aesd_cleanup_module(void)
     /**
      * TODO: cleanup AESD specific poritions here as necessary
      */
-    if(aesd_device.write_entry) 
+
+
+    if(aesd_device.write_buffer != NULL) 
     {
-        kfree(aesd_device.write_entry);
-        aesd_device.write_entry=NULL;
+        kfree(aesd_device.write_buffer);
     }
     mutex_destroy(&aesd_device.lock);
     //Completed
