@@ -105,21 +105,21 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
      * TODO: handle write
      */
 
-    // struct aesd_dev *dev = (struct aesd_dev *)filp->private_data;
-    // if(mutex_lock_interruptible(&aesd_device->lock))
-    // {
-    //     return -ERESTARTSYS;
-    // }
-    // char *kbuf = krealloc(dev->write_entry, dev->write_entry_size + count, GFP_KERNEL);
-    // if(kbuf == NULL)    {
-    //     retval = -ENOMEM;
-    //     goto out;
-    // }
-    // dev->write_entry = kbuf;
-    // dev->write_entry_size += count;
+    struct aesd_dev *dev = (struct aesd_dev *)filp->private_data;
+    if(mutex_lock_interruptible(&dev->lock))
+    {
+        return -ERESTARTSYS;
+    }
+    char *kbuf = krealloc(dev->write_buffer, dev->write_buffer_size + count, GFP_KERNEL);
+    if(kbuf == NULL)    {
+        retval = -ENOMEM;
+        goto out;
+    }
+    dev->write_buffer = kbuf;
+    dev->write_buffer_size += count;
 
-    // out:
-    // mutex_unlock(&aesd_device->lock);
+    out:
+    mutex_unlock(&dev->lock);
     return retval;
 }
 struct file_operations aesd_fops = {
