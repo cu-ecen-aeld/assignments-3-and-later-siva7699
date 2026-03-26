@@ -50,8 +50,6 @@ int aesd_release(struct inode *inode, struct file *filp)
     /**
      * TODO: handle release
      */
-    struct aesd_dev *dev = (struct aesd_dev *)filp->private_data;
-    //Completed
     return 0;
 }
 
@@ -116,7 +114,23 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
         goto out;
     }
     dev->write_buffer = kbuf;
+    
+    if(copy_from_user(dev->write_buffer + dev->write_buffer_size , buf, count))
+    {
+        retval = -EFAULT;
+        goto out;
+    }
     dev->write_buffer_size += count;
+
+    if(memchr(dev->write_buffer, '\n', dev->write_buffer_size) != NULL)
+    {
+        dev->write_entry.buffptr = dev->write_buffer;
+        dev->write_entry.size = dev->write_buffer_size;
+        aesd_circular_buffer_add_entry(&dev->circular_buffer, &dev->write_entry);
+        dev->write_buffer = NULL;
+        dev->write_buffer_size = 0;
+    }
+    retval = count;
 
     out:
     mutex_unlock(&dev->lock);
@@ -183,7 +197,15 @@ void aesd_cleanup_module(void)
     /**
      * TODO: cleanup AESD specific poritions here as necessary
      */
-
+    uint8_t i;
+    struct aesd_buffer_entry *entry;
+    AESD_CIRCULAR_BUFFER_FOREACH(entry, &aesd_device.circular_buffer, i) {
+        if (entry->buffptr) {
+            kfree((char *)entry->buffptr);
+            entry->buffptr = NULL;
+            entry->size = 0;
+        }
+    }
 
     if(aesd_device.write_buffer != NULL) 
     {

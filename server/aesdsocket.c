@@ -14,7 +14,15 @@
 #include <unistd.h>
 
 #define PORT 9000
+#ifndef USE_AESD_CHAR_DEVICE
+#define USE_AESD_CHAR_DEVICE 1
+#endif
+
+#if USE_AESD_CHAR_DEVICE
+#define DATA_FILE "/dev/aesdchar"
+#else
 #define DATA_FILE "/var/tmp/aesdsocketdata"
+#endif
 #define BUFFER_SIZE 1024
 
 int server_fd = -1;
@@ -50,7 +58,9 @@ void cleanup(void)
 void cleanup_and_remove_file(void)
 {
     cleanup();
+#if !USE_AESD_CHAR_DEVICE
     remove(DATA_FILE);
+#endif
 }
 
 void signal_handler(int sig)
@@ -142,6 +152,7 @@ static void handle_client(thread_data_t *thread_data)
     thread_data->thread_complete_success = true;
 }
 
+#if !USE_AESD_CHAR_DEVICE
 static void timestamp_thread_function(pthread_mutex_t *mutex)
 {
     for (;;) {
@@ -163,6 +174,7 @@ static void timestamp_thread_function(pthread_mutex_t *mutex)
         pthread_mutex_unlock(mutex);
     }
 }
+#endif
 
 int start_thread_obtaining_mutex(thread_data_t **thread_data, pthread_mutex_t *mutex,
                                   int client_fd, struct sockaddr_in client_addr)
@@ -195,10 +207,12 @@ int start_thread_obtaining_mutex(thread_data_t **thread_data, pthread_mutex_t *m
 
 int main(int argc, char *argv[])
 {
-    /* Truncate the data file at startup */
+    /* Truncate the data file at startup (only for regular file) */
+#if !USE_AESD_CHAR_DEVICE
     int fd_trunc = open(DATA_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd_trunc != -1)
         close(fd_trunc);
+#endif
 
     int daemon_mode = 0;
     int opt;
@@ -280,10 +294,12 @@ int main(int argc, char *argv[])
 
     pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
     thread_data_t *head = NULL;
-    pthread_t timestamp_thread;
 
+#if !USE_AESD_CHAR_DEVICE
+    pthread_t timestamp_thread;
     pthread_create(&timestamp_thread, NULL,
                    (void *(*)(void *))timestamp_thread_function, &mutex);
+#endif
 
     for (;;) {
         client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
