@@ -32,6 +32,7 @@ struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct
     size_t total_off = 0;
     uint8_t index = buffer->out_offs;
 
+    int i;
     for(int i=0; i< AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; i++)
     {
         //Check if the buffer entry string is NULL and return (happens when buffer is not full)
